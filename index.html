@@ -1,0 +1,1109 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Quran Timing Editor Pro</title>
+<link href="https://fonts.googleapis.com/css2?family=Amiri:wght@400;700&family=Instrument+Serif:ital@0;1&family=DM+Mono:wght@400;500&family=Outfit:wght@300;400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/localforage/1.10.0/localforage.min.js"></script>
+
+<style>
+:root{
+  --bg:#0d0f14;--bg2:#13161d;--bg3:#1a1e28;--bg4:#222736;
+  --border:rgba(255,255,255,0.07);--border2:rgba(255,255,255,0.13);
+  --text:#eef0f5;--text2:#8b90a0;--text3:#555b6e;
+  --accent:#6c8fff;--accent2:#4a6bdc;--green:#3dba7e;--green2:#2a8a5a;
+  --amber:#f0a835;--red:#e05555;
+  --r:12px;--rsm:8px;--rlg:18px;
+}
+:root[data-theme="light"]{
+  --bg:#f8f9fb;--bg2:#ffffff;--bg3:#f0f2f5;--bg4:#e4e7ec;
+  --border:rgba(0,0,0,0.07);--border2:rgba(0,0,0,0.13);
+  --text:#111418;--text2:#4b5563;--text3:#9ca3af;
+  --accent:#4a6bdc;--accent2:#3b56b2;
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;overflow-x:hidden;transition:background 0.3s,color 0.3s;}
+.app{display:flex;flex-direction:column;height:100vh;}
+.header{display:flex;align-items:center;justify-content:space-between;padding:12px 22px;background:var(--bg2);border-bottom:1px solid var(--border);flex-shrink:0;gap:12px;flex-wrap:wrap;}
+.logo{display:flex;align-items:center;gap:10px;}
+.logo-icon{width:32px;height:32px;border-radius:9px;background:linear-gradient(135deg,var(--accent),var(--accent2));display:flex;align-items:center;justify-content:center;font-size:14px;color:#fff;}
+.logo-title{font-family:'Instrument Serif',serif;font-size:19px;}
+.logo-sub{font-size:10px;color:var(--text3);letter-spacing:.5px;text-transform:uppercase;}
+.header-actions{display:flex;gap:7px;align-items:center;flex-wrap:wrap;}
+.save-status{font-size:10px;color:var(--text3);margin-right:8px;font-family:'DM Mono',monospace;transition:color 0.3s;}
+.save-status.saved{color:var(--green);}
+.btn{font-family:'Outfit',sans-serif;font-size:12px;font-weight:500;padding:7px 13px;border-radius:var(--rsm);border:1px solid var(--border2);background:var(--bg2);color:var(--text);cursor:pointer;transition:all .15s;display:flex;align-items:center;gap:5px;white-space:nowrap;}
+.btn:hover{background:var(--bg4);}
+.btn.primary{background:var(--accent2);border-color:var(--accent);color:#fff;}
+.btn.primary:hover{background:var(--accent);}
+.btn.success{background:var(--green2);border-color:var(--green);color:#fff;}
+.btn.success:hover{background:var(--green);}
+.btn.danger{border-color:var(--red);color:var(--red);}
+.btn.danger:hover{background:rgba(224,85,85,.1);}
+.btn.icon-btn{padding:7px;border-radius:50%;}
+.btn:disabled{opacity:0.5;cursor:not-allowed;}
+.sep{width:1px;height:20px;background:var(--border);flex-shrink:0;}
+.body{display:flex;flex:1;overflow:hidden;}
+
+/* SIDEBAR */
+.sidebar{width:276px;flex-shrink:0;background:var(--bg2);border-right:1px solid var(--border);display:flex;flex-direction:column;overflow:hidden;}
+.sidebar-hdr{padding:10px 12px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;gap:6px;flex-wrap:wrap;}
+.sidebar-title{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.8px;color:var(--text2);}
+.mushaf-sel{background:var(--bg3);border:1px solid var(--border2);color:var(--text);padding:4px 7px;border-radius:6px;font-size:11px;cursor:pointer;outline:none;}
+.drop-zone{margin:7px;border:1.5px dashed var(--border2);border-radius:var(--r);padding:14px 10px;text-align:center;cursor:pointer;transition:all .15s;color:var(--text3);font-size:11px;line-height:1.7;}
+.drop-zone:hover,.drop-zone.over{border-color:var(--accent);color:var(--accent);background:rgba(108,143,255,.04);}
+.drop-zone-icon{font-size:18px;margin-bottom:3px;}
+.slist{flex:1;overflow-y:auto;padding:5px;}
+.sitem{padding:7px 9px;border-radius:var(--rsm);cursor:pointer;transition:all .12s;display:flex;align-items:center;gap:7px;margin-bottom:1px;border:1px solid transparent;}
+.sitem:hover{background:var(--bg3);}
+.sitem.active{background:var(--bg4);border-color:var(--border2);}
+.sitem.has-audio .snum{background:var(--accent2);color:#fff;}
+.snum{width:24px;height:24px;border-radius:5px;background:var(--bg4);display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:700;color:var(--accent);flex-shrink:0;font-family:'DM Mono',monospace;}
+.sitem.active .snum{background:var(--accent2);color:#fff;}
+.sinfo{flex:1;min-width:0;}
+.sname{font-size:12px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.smeta{font-size:10px;color:var(--text3);margin-top:1px;}
+.sdot{width:6px;height:6px;border-radius:50%;flex-shrink:0;}
+.dot-done{background:var(--green);}
+.dot-partial{background:var(--amber);}
+.dot-none{background:var(--text3);}
+
+/* API STATUS PILL */
+.api-status{display:inline-flex;align-items:center;gap:5px;padding:3px 8px;border-radius:20px;font-size:10px;font-family:'DM Mono',monospace;border:1px solid var(--border2);background:var(--bg3);margin-top:4px;}
+.api-status .dot{width:6px;height:6px;border-radius:50%;background:var(--text3);}
+.api-status.loading .dot{background:var(--amber);animation:pulse 1s infinite;}
+.api-status.ok .dot{background:var(--green);}
+.api-status.err .dot{background:var(--red);}
+@keyframes pulse{0%,100%{opacity:1;}50%{opacity:0.3;}}
+
+/* EDITOR */
+.editor{flex:1;display:flex;flex-direction:column;overflow:hidden;background:var(--bg);}
+.empty-state{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;color:var(--text3);padding:40px;}
+.empty-icon{font-size:42px;opacity:.3;}
+.empty-title{font-size:15px;font-weight:500;color:var(--text2);}
+.empty-sub{font-size:12px;text-align:center;max-width:260px;line-height:1.6;}
+.econtent{flex:1;display:flex;flex-direction:column;overflow:hidden;}
+.etop{background:var(--bg2);border-bottom:1px solid var(--border);padding:10px 20px;display:flex;align-items:center;gap:14px;flex-shrink:0;flex-wrap:wrap;}
+.ename{font-family:'Instrument Serif',serif;font-size:20px;}
+.ear{font-size:13px;direction:rtl;color:var(--text2);margin-top:2px;}
+.emeta-chips{display:flex;gap:7px;margin-left:auto;flex-wrap:wrap;}
+.chip{background:var(--bg4);border:1px solid var(--border);border-radius:5px;padding:3px 9px;font-size:10px;color:var(--text2);font-family:'DM Mono',monospace;}
+.chip span{color:var(--text);font-weight:600;}
+
+/* AYAH TEXT */
+.ayah-text-box{background:var(--bg2);padding:10px 20px 0 20px;text-align:center;min-height:56px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;}
+.ayah-ar{font-family:'Amiri',serif;font-size:26px;direction:rtl;color:var(--text);line-height:1.6;}
+.ayah-meta-row{display:flex;align-items:center;gap:8px;}
+
+/* TAJWEED */
+.tjw-n{color:#ff8e5e;}.tjw-q{color:#a4a4a4;}.tjw-m,.tjw-o{color:#d67a7b;}.tjw-p,.tjw-j{color:#81b1d8;}.tjw-i{color:#9400d3;}.tjw-d{color:#169e54;}.tjw-b{color:#26b0f5;}[class^="tjw-h"],.tjw-s,.tjw-l{color:var(--text3);}.tjw-ayah-num{color:var(--text3);margin-right:5px;}
+
+/* AUDIO */
+.asec{background:var(--bg2);border-bottom:1px solid var(--border);padding:12px 20px;flex-shrink:0;}
+.ahint{display:flex;align-items:center;gap:10px;background:var(--bg3);border:1px dashed var(--border2);border-radius:var(--rsm);padding:10px 13px;cursor:pointer;transition:all .15s;}
+.ahint:hover{border-color:var(--accent);background:rgba(108,143,255,.04);}
+.wv-scroll-wrap{background:var(--bg3);border:1px solid var(--border);border-top-left-radius:var(--r);border-top-right-radius:var(--r);height:78px;overflow-x:auto;overflow-y:hidden;position:relative;scrollbar-width:none;}
+.wv-scroll-wrap::-webkit-scrollbar{display:none;}
+.wv-inner{height:100%;position:relative;width:100%;transform-origin:left center;cursor:crosshair;}
+canvas#wv{height:100%;display:block;position:absolute;left:0;pointer-events:none;}
+.playhead{position:absolute;top:0;bottom:0;width:2px;background:var(--accent);pointer-events:none;left:0;z-index:4;}
+.playhead::before{content:'';position:absolute;top:-3px;left:50%;transform:translateX(-50%);width:8px;height:8px;border-radius:50%;background:var(--accent);}
+.minimap-wrap{background:var(--bg4);height:20px;position:relative;border:1px solid var(--border);border-top:none;border-bottom-left-radius:var(--r);border-bottom-right-radius:var(--r);overflow:hidden;cursor:pointer;}
+canvas#minimap{width:100%;height:100%;display:block;opacity:0.6;pointer-events:none;}
+.minimap-window{position:absolute;top:0;bottom:0;background:rgba(108,143,255,0.2);border:1px solid var(--accent);pointer-events:none;}
+.overlays{position:absolute;inset:0;pointer-events:none;z-index:1;}
+.ovl-box{position:absolute;top:0;bottom:0;background:rgba(61,186,126,0.15);border-left:1px solid var(--green);border-right:1px solid var(--green);}
+.ovl-box.active{background:rgba(108,143,255,0.15);border-left:2px solid var(--accent);border-right:2px solid var(--accent);z-index:2;}
+.region-ovl{position:absolute;top:0;bottom:0;background:rgba(255,255,255,0.15);border:1px dashed #fff;display:none;z-index:5;pointer-events:none;}
+.word-handle{position:absolute;top:0;bottom:0;width:4px;margin-left:-2px;background:var(--amber);cursor:ew-resize;z-index:6;pointer-events:auto;transition:background 0.1s;}
+.word-handle:hover{background:#fff;width:6px;margin-left:-3px;}
+.controls{display:flex;align-items:center;gap:7px;margin-top:9px;flex-wrap:wrap;}
+.playbtn{width:33px;height:33px;border-radius:50%;background:var(--accent2);border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;color:#fff;flex-shrink:0;transition:all .15s;}
+.playbtn:hover{background:var(--accent);transform:scale(1.06);}
+.tdisp{font-family:'DM Mono',monospace;font-size:11px;color:var(--text2);white-space:nowrap;background:var(--bg3);padding:5px 9px;border-radius:var(--rsm);border:1px solid var(--border);}
+.tdisp .cur{color:var(--text);}
+.spsel{background:var(--bg3);border:1px solid var(--border2);color:var(--text);padding:4px 7px;border-radius:var(--rsm);font-size:11px;cursor:pointer;outline:none;}
+
+/* TOOLBAR */
+.toolbar{padding:9px 20px;display:flex;align-items:center;gap:7px;border-bottom:1px solid var(--border);flex-shrink:0;flex-wrap:wrap;background:var(--bg2);}
+.tlab{font-size:10px;color:var(--text2);font-weight:700;text-transform:uppercase;letter-spacing:.7px;margin-right:2px;}
+.ain{width:68px;background:var(--bg3);border:1px solid var(--border2);color:var(--text);padding:5px 7px;border-radius:var(--rsm);font-family:'DM Mono',monospace;font-size:11px;outline:none;}
+.ain:focus{border-color:var(--accent);}
+.chk-lbl{font-size:11px;color:var(--text);display:flex;align-items:center;gap:4px;cursor:pointer;user-select:none;}
+
+/* TABLE */
+.twrap{flex:1;overflow-y:auto;}
+table{width:100%;border-collapse:collapse;font-size:12px;}
+thead{position:sticky;top:0;z-index:10;background:var(--bg2);}
+th{padding:8px 12px;text-align:left;font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.7px;color:var(--text3);border-bottom:1px solid var(--border);white-space:nowrap;}
+th.c{text-align:center;}
+tbody tr{border-bottom:1px solid var(--border);cursor:pointer;transition:background .1s;}
+tbody tr:hover{background:rgba(108,143,255,.05);}
+tbody tr.sel{background:rgba(108,143,255,.1);}
+tbody tr.sel td:first-child{border-left:2px solid var(--accent);}
+tbody tr.err-row{background:rgba(224,85,85,0.1);border-left:2px solid var(--red);}
+tbody tr.overlap{background:rgba(240,168,53,0.1);border-left:2px solid var(--amber);}
+td{padding:6px 12px;vertical-align:middle;}
+.anc{text-align:center;font-family:'DM Mono',monospace;font-size:11px;font-weight:600;color:var(--text2);}
+.ii{width:84px;background:var(--bg3);border:1px solid var(--border2);color:var(--text);padding:4px 6px;border-radius:5px;font-family:'DM Mono',monospace;font-size:11px;outline:none;}
+.ii:focus{border-color:var(--accent);}
+.mb{width:22px;height:22px;border-radius:5px;border:1px solid var(--border2);background:var(--bg4);color:var(--text3);cursor:pointer;font-size:9px;display:flex;align-items:center;justify-content:center;transition:all .12s;flex-shrink:0;}
+.mb:hover{background:var(--accent2);border-color:var(--accent);color:#fff;}
+.dc{background:var(--bg4);border-radius:4px;padding:2px 6px;font-family:'DM Mono',monospace;font-size:10px;color:var(--text2);}
+.ra{display:flex;gap:3px;justify-content:flex-end;}
+.ib{width:22px;height:22px;border-radius:5px;border:1px solid transparent;background:transparent;color:var(--text3);cursor:pointer;font-size:11px;display:flex;align-items:center;justify-content:center;}
+.ib:hover{background:var(--bg4);border-color:var(--border);color:var(--text);}
+.ib.p{color:var(--accent);}
+.ib.p:hover{background:var(--accent2);border-color:var(--accent);color:#fff;}
+.ib.d:hover{color:var(--red);border-color:var(--red);}
+.ddot{width:6px;height:6px;border-radius:50%;background:var(--green);display:inline-block;margin-left:5px;vertical-align:middle;}
+.wbadge{font-size:9px;background:var(--accent2);color:#fff;padding:2px 4px;border-radius:4px;margin-left:4px;font-weight:bold;}
+
+/* STATUS BAR */
+.stbar{height:25px;background:var(--bg2);border-top:1px solid var(--border);display:flex;align-items:center;padding:0 16px;gap:12px;font-size:10px;color:var(--text3);flex-shrink:0;}
+.stbar .it{display:flex;align-items:center;gap:4px;}
+
+/* MODALS */
+.mbg{position:fixed;inset:0;background:rgba(0,0,0,.78);display:flex;align-items:center;justify-content:center;z-index:100;backdrop-filter:blur(4px);}
+.modal{background:var(--bg2);border:1px solid var(--border2);border-radius:var(--rlg);padding:24px;width:460px;max-width:96vw;max-height:90vh;overflow-y:auto;box-shadow:0 10px 40px rgba(0,0,0,0.5);}
+.mtitle{font-size:17px;font-weight:600;margin-bottom:16px;}
+.fg{margin-bottom:13px;}
+.fl{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--text2);margin-bottom:5px;display:block;}
+.fi{width:100%;background:var(--bg3);border:1px solid var(--border2);color:var(--text);padding:9px 12px;border-radius:var(--rsm);font-family:'Outfit',sans-serif;font-size:13px;outline:none;}
+.fi:focus{border-color:var(--accent);}
+.macts{display:flex;gap:7px;justify-content:flex-end;margin-top:18px;}
+.hint{font-size:10px;color:var(--text3);margin-top:3px;line-height:1.5;}
+.sc-list{list-style:none;margin-bottom:10px;}
+.sc-list li{display:flex;justify-content:space-between;margin-bottom:8px;font-size:12px;color:var(--text2);border-bottom:1px solid var(--border);padding-bottom:5px;}
+.sc-list li kbd{background:var(--bg4);color:var(--text);padding:2px 6px;border-radius:4px;font-family:'DM Mono',monospace;font-size:10px;border:1px solid var(--border2);}
+.word-container{font-family:'Amiri',serif;font-size:28px;line-height:1.8;display:flex;flex-wrap:wrap;gap:10px;padding:20px;background:var(--bg3);border-radius:var(--r);border:1px solid var(--border2);margin-bottom:15px;}
+.word-span{padding:4px 8px;border-radius:6px;cursor:default;transition:all 0.1s;}
+.word-span.done{background:rgba(61,186,126,0.2);color:var(--green);}
+.word-span.active{background:var(--accent2);color:#fff;transform:scale(1.1);box-shadow:0 4px 10px rgba(74,107,220,0.4);}
+
+/* API INFO BOX */
+.api-info-box{background:var(--bg3);border:1px solid var(--border2);border-radius:var(--rsm);padding:10px 14px;margin-bottom:13px;font-size:11px;color:var(--text2);line-height:1.7;}
+.api-info-box strong{color:var(--text);}
+.api-info-box .mushaf-badge{display:inline-block;background:var(--accent2);color:#fff;padding:1px 6px;border-radius:4px;font-size:10px;margin-left:4px;}
+
+.twc{position:fixed;bottom:18px;right:18px;z-index:200;display:flex;flex-direction:column;gap:5px;}
+.toast{background:var(--bg4);border:1px solid var(--border2);border-radius:var(--rsm);padding:8px 13px;font-size:12px;color:var(--text);min-width:190px;animation:ti .2s ease;display:flex;align-items:center;gap:7px;box-shadow:0 4px 12px rgba(0,0,0,0.2);}
+.toast.success{border-left:3px solid var(--green);}
+.toast.error{border-left:3px solid var(--red);}
+.toast.info{border-left:3px solid var(--accent);}
+@keyframes ti{from{opacity:0;transform:translateX(14px);}to{opacity:1;transform:translateX(0);}}
+::-webkit-scrollbar{width:4px;height:4px;}
+::-webkit-scrollbar-track{background:transparent;}
+::-webkit-scrollbar-thumb{background:var(--bg4);border-radius:3px;}
+</style>
+</head>
+<body>
+<div class="app">
+<div class="header">
+  <div class="logo">
+    <div class="logo-icon">🕌</div>
+    <div>
+      <div class="logo-title">Mushaf Timing Editor <span style="font-size:12px;color:var(--accent);font-family:'Outfit'">PRO</span></div>
+      <div class="logo-sub">Ayah & Word Level Timing · Quranpedia API</div>
+    </div>
+  </div>
+  <div class="header-actions">
+    <span class="save-status" id="save-status">Loading DB...</span>
+    <button class="btn icon-btn" onclick="toggleTheme()" title="Toggle Theme" id="theme-btn">☀️</button>
+    <button class="btn" onclick="openHelpModal()">
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3M12 17h.01"/></svg> Shortcuts
+    </button>
+    <div class="sep"></div>
+    <button class="btn" onclick="openAddModal()">
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M5 12h14"/></svg> Add Surah
+    </button>
+    <div class="sep"></div>
+    <button class="btn" onclick="importJSON()">
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg> Import JSON
+    </button>
+    <button class="btn success" onclick="openExportModal()">
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M17 8l-5-5-5 5M12 3v12"/></svg> Export...
+    </button>
+  </div>
+</div>
+
+<div class="body">
+  <!-- SIDEBAR -->
+  <div class="sidebar">
+    <div class="sidebar-hdr">
+      <span class="sidebar-title">Surahs</span>
+      <select class="mushaf-sel" id="mushaf-type" onchange="onMushafChange()">
+        <option value="hafs">Hafs (عاصم)</option>
+        <option value="warsh">Warsh (نافع)</option>
+        <option value="qalun">Qalun (نافع)</option>
+        <option value="susi">Susi (أبو عمرو)</option>
+        <option value="duri">Duri (أبو عمرو)</option>
+      </select>
+    </div>
+    <div style="padding:4px 12px 0;">
+      <div class="api-status" id="api-status-pill">
+        <div class="dot"></div>
+        <span id="api-status-text">API: Ready</span>
+      </div>
+    </div>
+    <div class="drop-zone" id="dz" onclick="document.getElementById('fin').click()">
+      <div class="drop-zone-icon">🎵</div>
+      Drop MP3 files here<br>or click to browse
+      <input type="file" id="fin" multiple accept="audio/*" style="display:none" onchange="handleFiles(this.files)">
+    </div>
+    <div class="slist" id="slist"></div>
+  </div>
+
+  <!-- EDITOR -->
+  <div class="editor" id="editor">
+    <div class="empty-state" id="est">
+      <div class="empty-icon">🎵</div>
+      <div class="empty-title">No surah selected</div>
+      <div class="empty-sub">Drop MP3 files or click "+ Add Surah" to begin. Arabic text is fetched automatically from Quranpedia for each riwayah.</div>
+      <button class="btn primary" onclick="document.getElementById('fin').click()">Load MP3 Files</button>
+    </div>
+
+    <div class="econtent" id="econt" style="display:none;">
+      <div class="etop">
+        <div>
+          <div class="ename" id="ename">—</div>
+          <div class="ear" id="ear">—</div>
+          <div style="font-size:10px;color:var(--text3);margin-top:2px;" id="emeta2">—</div>
+        </div>
+        <div class="emeta-chips">
+          <div class="chip">Ayahs: <span id="st-total">0</span></div>
+          <div class="chip">Done: <span id="st-done">0</span></div>
+          <div class="chip">Duration: <span id="st-dur">—</span></div>
+        </div>
+      </div>
+
+      <div class="ayah-text-box">
+        <div class="ayah-ar" id="ayah-text-ar">—</div>
+        <div class="ayah-meta-row" id="ayah-meta-row" style="display:none;">
+          <span id="ayah-api-src" style="font-size:10px;color:var(--text3);font-family:'DM Mono',monospace;"></span>
+        </div>
+      </div>
+
+      <div class="asec">
+        <div class="ahint" id="ahint" onclick="document.getElementById('afin').click()">
+          <span style="font-size:16px;">🎵</span>
+          <span>Click to load MP3 for this surah</span>
+          <input type="file" id="afin" accept="audio/*" style="display:none" onchange="loadAudioFile(this.files[0])">
+        </div>
+        <div id="aui" style="display:none;">
+          <div class="wv-scroll-wrap" id="wvsw">
+            <div class="wv-inner" id="wvw">
+              <canvas id="wv"></canvas>
+              <div class="overlays" id="ovl-container"></div>
+              <div class="region-ovl" id="region-ovl"></div>
+              <div class="playhead" id="ph"></div>
+            </div>
+          </div>
+          <div class="minimap-wrap" id="minimap-wrap">
+            <canvas id="minimap"></canvas>
+            <div class="minimap-window" id="minimap-window"></div>
+          </div>
+          <div class="controls">
+            <button class="playbtn" id="pbtn" onclick="togglePlay()">
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor"><polygon points="5,3 19,12 5,21"/></svg>
+            </button>
+            <button class="btn" style="padding:4px 8px;font-size:10px;" onclick="audio.currentTime=Math.max(0,audio.currentTime-5)">⏮5s</button>
+            <button class="btn" style="padding:4px 8px;font-size:10px;" onclick="audio.currentTime=Math.min(audio.duration||0,audio.currentTime+5)">5s⏭</button>
+            <div class="tdisp"><span class="cur" id="ctm">0:00.000</span> / <span id="ttm">0:00</span></div>
+            <button class="ib" id="btn-loop" onclick="toggleLoop()" title="Loop Active Ayah">🔁</button>
+            <div style="display:flex;align-items:center;gap:4px;font-size:10px;color:var(--text2);margin-left:auto;">Zoom: <span id="zoom-lbl" style="font-family:'DM Mono',monospace;width:30px;">1.0x</span></div>
+            <div style="display:flex;align-items:center;gap:4px;font-size:10px;color:var(--text2);">Speed:
+              <select class="spsel" id="speed-sel" onchange="audio.playbackRate=parseFloat(this.value)">
+                <option value="0.25">0.25×</option><option value="0.5">0.5×</option><option value="0.75">0.75×</option><option value="1" selected>1×</option><option value="1.25">1.25×</option><option value="1.5">1.5×</option><option value="2">2×</option>
+              </select>
+            </div>
+            <div style="display:flex;align-items:center;gap:4px;">
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="var(--text3)" stroke-width="2"><polygon points="11,5 6,9 2,9 2,15 6,15 11,19"/><path d="M15.54,8.46a5,5,0,0,1,0,7.07"/></svg>
+              <input type="range" min="0" max="1" step="0.05" value="1" style="width:52px;accent-color:var(--accent);" onchange="audio.volume=parseFloat(this.value)">
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="toolbar">
+        <span class="tlab">Mark:</span>
+        <button class="btn" style="border-color:var(--accent);color:var(--accent);font-size:11px;" onclick="markStart()">▶ Start [S]</button>
+        <button class="btn" style="border-color:var(--green);color:var(--green);font-size:11px;" onclick="markEnd()">■ End [E]</button>
+        <div class="sep"></div>
+        <label style="font-size:10px;color:var(--text2);">Ayah #</label>
+        <input type="number" class="ain" id="aain" value="1" min="0" onchange="setActiveAyah(parseInt(this.value))">
+        <div class="sep"></div>
+        <button class="btn" id="btn-word-mode" style="font-size:11px;background:rgba(108,143,255,0.1);color:var(--accent);border-color:var(--accent);" onclick="openWordModal()" disabled>📝 Time Words</button>
+        <div class="sep"></div>
+        <button class="btn" id="btn-basmalah" style="font-size:11px;" onclick="toggleBasmalah()">+ Add Basmalah</button>
+        <button class="btn" style="font-size:11px;" onclick="refetchText()" title="Re-fetch Arabic text from API">🔄 Re-fetch Text</button>
+        <label class="chk-lbl" style="margin-left:8px;">
+          <input type="checkbox" id="chk-strict" checked onchange="renderTable()"> Strict Sync
+        </label>
+        <div class="sep" style="margin-left:auto;"></div>
+        <button class="btn" style="font-size:11px;background:var(--accent2);color:#fff;border-color:var(--accent);" onclick="document.getElementById('split-modal').style.display='flex'">🪄 Auto-Split</button>
+        <button class="btn" style="font-size:11px;border-color:var(--amber);color:var(--amber);" onclick="batchShift()">⇋ Shift</button>
+        <button class="btn danger" style="font-size:11px;" onclick="clearAll()">🗑 Clear</button>
+      </div>
+
+      <div class="twrap">
+        <table>
+          <thead>
+            <tr>
+              <th class="c" style="width:42px;">#</th>
+              <th>Verse</th>
+              <th style="width:128px;">Start (ms)</th>
+              <th style="width:128px;">End (ms)</th>
+              <th style="width:75px;">Duration</th>
+              <th class="c" style="width:84px;">Actions</th>
+            </tr>
+          </thead>
+          <tbody id="tbody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="stbar">
+  <div class="it"><div class="sdot" style="width:5px;height:5px;border-radius:50%;background:var(--green)"></div><span id="sbf">No file loaded</span></div>
+  <div class="it">⌨ Shift+Drag=Mark · S/E=Mark · Space=Play · Alt+←→=Nudge · Ctrl+Wheel=Zoom</div>
+  <div class="it" style="margin-left:auto;"><span id="sbp">0 / 0 done</span></div>
+</div>
+</div>
+
+<!-- MODALS -->
+<div class="mbg" id="help-modal" style="display:none;" onclick="if(event.target===this)closeHelpModal()">
+  <div class="modal">
+    <div class="mtitle">Keyboard & Mouse Shortcuts</div>
+    <ul class="sc-list">
+      <li><span>Mark via Drag</span><kbd>Shift + Drag Waveform</kbd></li>
+      <li><span>Zoom Waveform</span><kbd>Ctrl + Mouse Wheel</kbd></li>
+      <li><span>Play / Pause</span><kbd>Space</kbd></li>
+      <li><span>Adjust Speed</span><kbd>[ / ]</kbd></li>
+      <li><span>Mark Start time</span><kbd>S</kbd></li>
+      <li><span>Mark End & Next Ayah</span><kbd>E</kbd></li>
+      <li><span>Seek ±1 second</span><kbd>← / →</kbd></li>
+      <li><span>Prev / Next Ayah</span><kbd>↑ / ↓</kbd></li>
+      <li><span>Nudge Start Time ±50ms</span><kbd>Alt + ←/→</kbd></li>
+      <li><span>Nudge End Time ±50ms</span><kbd>Alt + Shift + ←/→</kbd></li>
+      <li><span>Undo / Redo</span><kbd>Ctrl+Z / Ctrl+Shift+Z</kbd></li>
+    </ul>
+    <div class="macts"><button class="btn primary" onclick="closeHelpModal()">Got it</button></div>
+  </div>
+</div>
+
+<div class="mbg" id="amodal" style="display:none;">
+  <div class="modal">
+    <div class="mtitle">Add Surah</div>
+    <div class="api-info-box">
+      Arabic text will be fetched automatically from <strong>api.quranpedia.net</strong> for the selected riwayah: <span class="mushaf-badge" id="modal-mushaf-badge">hafs</span>
+    </div>
+    <div class="fg">
+      <label class="fl">Quick Select</label>
+      <select class="fi" id="qsel" onchange="fillFromQuick(this.value)">
+        <option value="">— choose a surah —</option>
+      </select>
+    </div>
+    <div class="fg">
+      <label class="fl">Surah Number (1–114)</label>
+      <input type="number" class="fi" id="mnum" placeholder="e.g. 1" min="1" max="114" onchange="fillFromQuick(this.value)">
+    </div>
+    <div class="fg">
+      <label class="fl">Surah Name (English)</label>
+      <input type="text" class="fi" id="mname" placeholder="e.g. Al-Fatiha">
+    </div>
+    <div class="fg">
+      <label class="fl">Number of Ayahs</label>
+      <input type="number" class="fi" id="mayahs" placeholder="Auto-filled" min="1">
+      <span class="hint">Will be corrected once text is fetched from API.</span>
+    </div>
+    <div class="macts">
+      <button class="btn" onclick="closeModal()">Cancel</button>
+      <button class="btn primary" onclick="addSurah()">Add Surah</button>
+    </div>
+  </div>
+</div>
+
+<div class="mbg" id="split-modal" style="display:none;">
+  <div class="modal">
+    <div class="mtitle">Auto-Detect Silences</div>
+    <div class="fg">
+      <label class="fl">Silence Threshold</label>
+      <input type="range" id="split-thresh" min="0.005" max="0.05" step="0.001" value="0.015" style="width:100%">
+      <div class="hint">Lower = requires absolute silence. Higher = tolerates background noise.</div>
+    </div>
+    <div class="fg">
+      <label class="fl">Minimum Silence Duration (ms)</label>
+      <input type="number" class="fi" id="split-dur" value="300" step="50">
+    </div>
+    <div class="macts">
+      <button class="btn" onclick="document.getElementById('split-modal').style.display='none'">Cancel</button>
+      <button class="btn primary" onclick="magicAutoSplit()">🪄 Run Auto-Split</button>
+    </div>
+  </div>
+</div>
+
+<div class="mbg" id="word-modal" style="display:none;">
+  <div class="modal" style="width:640px;">
+    <div class="mtitle">Word-Level Timings <span style="font-size:12px;font-weight:normal;color:var(--text2);">Ayah <span id="wm-ayah-num"></span></span></div>
+    <div class="word-container" id="wm-words" dir="rtl"></div>
+    <div class="stbar" style="border:none;margin-top:15px;background:var(--bg4);border-radius:8px;">
+       <div class="it">⌨ <strong>Space</strong> = Tap Next Word</div>
+       <div class="it" style="margin-left:auto;" id="wm-status">Ready</div>
+    </div>
+    <div class="macts" style="justify-content:space-between;">
+       <button class="btn danger" onclick="resetWordTimings()">Reset Timings</button>
+       <div style="display:flex;gap:7px;">
+         <button class="btn" onclick="closeWordModal()">Done</button>
+         <button class="btn primary" id="wm-start-btn" onclick="startWordTapping()">▶️ Start Tapping</button>
+       </div>
+    </div>
+  </div>
+</div>
+
+<div class="mbg" id="exp-modal" style="display:none;">
+  <div class="modal">
+    <div class="mtitle">Export Project</div>
+    <div class="fg">
+      <label class="fl">Export Scope</label>
+      <select class="fi" id="exp-scope" onchange="updateExpOptions()">
+        <option value="current">Active Surah</option>
+        <option value="all">All Surahs (JSON DB)</option>
+        <option value="zip">Full Workspace (.ZIP)</option>
+      </select>
+    </div>
+    <div class="fg" id="exp-fmt-group">
+      <label class="fl">Format</label>
+      <select class="fi" id="exp-fmt" onchange="updateExpOptions()">
+        <option value="vtt">WebVTT (.vtt)</option>
+        <option value="srt">SRT Subtitles (.srt)</option>
+        <option value="lrc">LRC Lyrics (.lrc)</option>
+        <option value="youtube">YouTube Chapters (.txt)</option>
+        <option value="audacity">Audacity Labels (.txt)</option>
+        <option value="json">JSON Timings (.json)</option>
+      </select>
+    </div>
+    <div class="fg" id="exp-txt-group">
+      <label class="chk-lbl">
+        <input type="checkbox" id="exp-inc-text"> Include Arabic text in export
+      </label>
+    </div>
+    <div class="macts">
+      <button class="btn" onclick="closeExportModal()">Cancel</button>
+      <button class="btn success" onclick="executeExport()">Download</button>
+    </div>
+  </div>
+</div>
+
+<div class="twc" id="twc"></div>
+<input type="file" id="jin" accept=".json" style="display:none" onchange="handleJSONImport(this)">
+<audio id="audio" preload="auto"></audio>
+
+<script>
+// ===== THEME =====
+function toggleTheme(){
+  const root=document.documentElement,btn=document.getElementById('theme-btn');
+  if(root.getAttribute('data-theme')==='light'){root.removeAttribute('data-theme');btn.textContent='☀️';localStorage.setItem('qt_theme','dark');}
+  else{root.setAttribute('data-theme','light');btn.textContent='🌙';localStorage.setItem('qt_theme','light');}
+}
+if(localStorage.getItem('qt_theme')==='light') toggleTheme();
+
+// ===== SURAH METADATA =====
+// Ayah counts per riwayah (fallback if API unreachable)
+const AYAH_COUNTS = {
+  hafs:[7,286,200,176,120,165,206,75,129,109,123,111,43,52,99,128,111,110,98,135,112,78,118,64,77,227,93,88,69,60,34,30,73,54,45,83,182,88,75,85,54,53,89,59,37,35,38,29,18,45,60,49,62,55,78,96,29,22,24,13,14,11,11,18,12,12,30,52,52,44,28,28,20,56,40,31,50,40,46,42,29,19,36,25,22,17,19,26,30,20,15,21,11,8,8,19,5,8,8,11,11,8,3,9,5,4,7,3,6,3,5,4,5,6],
+  warsh:[7,285,200,175,122,167,206,77,130,109,121,111,44,54,99,128,110,105,99,134,112,76,118,64,77,226,94,88,69,59,33,30,73,54,46,82,182,86,75,85,53,50,89,57,36,35,39,29,18,45,60,49,62,55,78,96,29,22,24,13,14,11,11,18,12,12,30,52,52,44,28,28,19,55,39,31,50,40,46,42,29,19,36,25,22,17,19,26,30,20,15,21,11,8,8,19,5,8,8,11,11,8,3,9,5,4,7,3,6,3,5,4,5,6],
+  qalun:[7,285,200,176,120,165,206,75,130,109,121,111,44,54,99,128,110,105,99,134,112,76,118,64,77,226,94,88,69,59,34,30,73,54,45,82,182,86,75,85,54,50,89,57,37,35,38,29,18,45,60,49,62,55,78,96,29,22,24,13,14,11,11,18,12,12,30,52,52,44,28,28,20,55,39,31,50,40,46,42,29,19,36,25,22,17,19,26,30,20,15,21,11,8,8,19,5,8,8,11,11,8,3,9,5,4,7,3,6,3,5,4,5,6],
+  susi:[7,285,200,175,120,166,206,76,129,109,123,111,43,54,99,128,111,105,98,135,112,78,118,64,77,227,93,88,69,60,34,30,73,54,45,83,182,88,75,85,54,53,89,59,36,35,39,29,18,45,60,49,62,55,78,96,29,22,24,13,14,11,11,18,12,12,30,52,52,44,28,28,20,56,40,31,50,40,46,42,29,19,36,25,22,17,19,26,30,20,15,21,11,8,8,19,5,8,8,11,11,8,3,9,5,4,7,3,6,3,5,4,5,6],
+  duri:[7,285,200,175,120,166,206,76,129,109,123,111,43,54,99,128,111,105,98,135,112,78,118,64,77,227,93,88,69,60,34,30,73,54,45,83,182,88,75,85,54,53,89,59,36,35,39,29,18,45,60,49,62,55,78,96,29,22,24,13,14,11,11,18,12,12,30,52,52,44,28,28,20,56,40,31,50,40,46,42,29,19,36,25,22,17,19,26,30,20,15,21,11,8,8,19,5,8,8,11,11,8,3,9,5,4,7,3,6,3,5,4,5,6]
+};
+
+const SD=[[1,'Al-Fatiha','الفاتحة'],[2,'Al-Baqarah','البقرة'],[3,'Ali Imran','آل عمران'],[4,"An-Nisa'",'النساء'],[5,'Al-Maidah','المائدة'],[6,'Al-Anam','الأنعام'],[7,'Al-Araf','الأعراف'],[8,'Al-Anfal','الأنفال'],[9,'At-Tawbah','التوبة'],[10,'Yunus','يونس'],[11,'Hud','هود'],[12,'Yusuf','يوسف'],[13,"Ar-Ra'd",'الرعد'],[14,'Ibrahim','إبراهيم'],[15,'Al-Hijr','الحجر'],[16,'An-Nahl','النحل'],[17,'Al-Isra','الإسراء'],[18,'Al-Kahf','الكهف'],[19,'Maryam','مريم'],[20,'Ta-Ha','طه'],[21,'Al-Anbiya','الأنبياء'],[22,'Al-Hajj','الحج'],[23,'Al-Muminun','المؤمنون'],[24,'An-Nur','النور'],[25,'Al-Furqan','الفرقان'],[26,'Ash-Shuara','الشعراء'],[27,'An-Naml','النمل'],[28,'Al-Qasas','القصص'],[29,'Al-Ankabut','العنكبوت'],[30,'Ar-Rum','الروم'],[31,'Luqman','لقمان'],[32,'As-Sajdah','السجدة'],[33,'Al-Ahzab','الأحزاب'],[34,"Saba'",'سبأ'],[35,'Fatir','فاطر'],[36,'Ya-Sin','يس'],[37,'As-Saffat','الصافات'],[38,'Sad','ص'],[39,'Az-Zumar','الزمر'],[40,'Ghafir','غافر'],[41,'Fussilat','فصلت'],[42,'Ash-Shura','الشورى'],[43,'Az-Zukhruf','الزخرف'],[44,'Ad-Dukhan','الدخان'],[45,'Al-Jathiyah','الجاثية'],[46,'Al-Ahqaf','الأحقاف'],[47,'Muhammad','محمد'],[48,'Al-Fath','الفتح'],[49,'Al-Hujurat','الحجرات'],[50,'Qaf','ق'],[51,'Adh-Dhariyat','الذاريات'],[52,'At-Tur','الطور'],[53,'An-Najm','النجم'],[54,'Al-Qamar','القمر'],[55,'Ar-Rahman','الرحمن'],[56,'Al-Waqiah','الواقعة'],[57,'Al-Hadid','الحديد'],[58,'Al-Mujadilah','المجادلة'],[59,'Al-Hashr','الحشر'],[60,'Al-Mumtahanah','الممتحنة'],[61,'As-Saf','الصف'],[62,'Al-Jumuah','الجمعة'],[63,'Al-Munafiqun','المنافقون'],[64,'At-Taghabun','التغابن'],[65,'At-Talaq','الطلاق'],[66,'At-Tahrim','التحريم'],[67,'Al-Mulk','الملك'],[68,'Al-Qalam','القلم'],[69,'Al-Haqqah','الحاقة'],[70,'Al-Maarij','المعارج'],[71,'Nuh','نوح'],[72,'Al-Jinn','الجن'],[73,'Al-Muzzammil','المزمل'],[74,'Al-Muddaththir','المدثر'],[75,'Al-Qiyamah','القيامة'],[76,'Al-Insan','الإنسان'],[77,'Al-Mursalat','المرسلات'],[78,"An-Naba'",'النبأ'],[79,'An-Naziat','النازعات'],[80,'Abasa','عبس'],[81,'At-Takwir','التكوير'],[82,'Al-Infitar','الانفطار'],[83,'Al-Mutaffifin','المطففين'],[84,'Al-Inshiqaq','الانشقاق'],[85,'Al-Buruj','البروج'],[86,'At-Tariq','الطارق'],[87,'Al-Ala','الأعلى'],[88,'Al-Ghashiyah','الغاشية'],[89,'Al-Fajr','الفجر'],[90,'Al-Balad','البلد'],[91,'Ash-Shams','الشمس'],[92,'Al-Layl','الليل'],[93,'Ad-Duha','الضحى'],[94,'Ash-Sharh','الشرح'],[95,'At-Tin','التين'],[96,'Al-Alaq','العلق'],[97,'Al-Qadr','القدر'],[98,'Al-Bayyinah','البينة'],[99,'Az-Zalzalah','الزلزلة'],[100,'Al-Adiyat','العاديات'],[101,'Al-Qariah','القارعة'],[102,'At-Takathur','التكاثر'],[103,'Al-Asr','العصر'],[104,'Al-Humazah','الهمزة'],[105,'Al-Fil','الفيل'],[106,'Quraysh','قريش'],[107,'Al-Maun','الماعون'],[108,'Al-Kawthar','الكوثر'],[109,'Al-Kafirun','الكافرون'],[110,'An-Nasr','النصر'],[111,'Al-Masad','المسد'],[112,'Al-Ikhlas','الإخلاص'],[113,'Al-Falaq','الفلق'],[114,'An-Nas','الناس']];
+const MNAMES={hafs:'Hafs',warsh:'Warsh',qalun:'Qalun',susi:'Susi',duri:'Duri'};
+
+// ===== QURANPEDIA API MAPPING =====
+// Maps our riwayah keys to Quranpedia's mushaf identifiers
+// Discovered from the API: /api/mushafs lists available mushafs
+const QP_MUSHAF_IDS = {
+  hafs:  1,
+  warsh: 2,
+  qalun: 3,
+  susi:  4,
+  duri:  5
+};
+
+const savedMushaf = localStorage.getItem('qt_mushaf') || 'hafs';
+document.getElementById('mushaf-type').value = savedMushaf;
+
+function getMushaf(){ return document.getElementById('mushaf-type').value; }
+function getAyahCount(num){ const t=getMushaf(); return (AYAH_COUNTS[t]||AYAH_COUNTS.hafs)[num-1]; }
+function getSI(num){ return SD.find(x=>x[0]===num); }
+(()=>{const sel=document.getElementById('qsel');SD.forEach(s=>{const o=document.createElement('option');o.value=s[0];o.textContent=`${s[0]}. ${s[1]} — ${s[2]}`;sel.appendChild(o);});})();
+
+// ===== STATE =====
+let surahs={},activeSurah=null,activeAyah=1,isPlaying=false,raf=null,aReady=false;
+let zoomLevel=1.0,isLooping=false,cachedChannelData=null;
+let activeUndoStack=[],activeRedoStack=[];
+let saveTimeout=null;
+let isWordModeOpen=false,isWordTapping=false,wmCurrentIndex=0;
+let currentAudioUrl=null;
+const audio=document.getElementById('audio');
+
+// ===== IDB =====
+localforage.config({name:'QuranTimingEditor',storeName:'workspace'});
+
+async function saveToIDB(){
+  try{
+    const metaData={};
+    for(let k in surahs){
+      metaData[k]={num:surahs[k].num,nameEn:surahs[k].nameEn,nameAr:surahs[k].nameAr,ayahCount:surahs[k].ayahCount,hasBasmalah:surahs[k].hasBasmalah,timings:surahs[k].timings,textData:surahs[k].textData,textMushaf:surahs[k].textMushaf||'hafs'};
+      if(surahs[k].audioBlob) await localforage.setItem(`audio_${k}`,surahs[k].audioBlob);
+      else await localforage.removeItem(`audio_${k}`);
+    }
+    await localforage.setItem('quran_meta',metaData);
+    const el=document.getElementById('save-status');
+    el.textContent='Saved just now';el.classList.add('saved');
+    if(saveTimeout) clearTimeout(saveTimeout);
+    saveTimeout=setTimeout(()=>{el.textContent='All changes saved locally';el.classList.remove('saved');},3000);
+  }catch(e){ console.error(e); document.getElementById('save-status').textContent='Error saving'; }
+}
+
+async function loadFromIDB(){
+  try{
+    const savedMeta=await localforage.getItem('quran_meta');
+    const oldDb=await localforage.getItem('quran_db');
+    if(oldDb&&!savedMeta){ surahs=oldDb; await localforage.removeItem('quran_db'); saveToIDB(); renderSurahList(); document.getElementById('save-status').textContent='All changes saved locally'; return; }
+    if(savedMeta){ surahs=savedMeta; for(let k in surahs){ const b=await localforage.getItem(`audio_${k}`); if(b) surahs[k].audioBlob=b; } renderSurahList(); document.getElementById('save-status').textContent='All changes saved locally'; }
+    else{ document.getElementById('save-status').textContent='Workspace Empty'; toast('Drop MP3s or add a Surah to begin','info'); }
+  }catch(e){ console.error(e); toast('Error loading DB','error'); }
+}
+
+function triggerChange(){ updateStats(); updateOverlays(); renderTable(); if(saveTimeout) clearTimeout(saveTimeout); saveTimeout=setTimeout(saveToIDB,800); }
+
+// ===== QURANPEDIA API FETCH =====
+// Correct endpoint: GET /v1/mushafs/{mushafId}/{surahNum}/{ayahNum}
+// e.g. https://api.quranpedia.net/v1/mushafs/1/1/1  → Hafs, Al-Fatiha, Ayah 1
+// We fetch all ayahs of a surah in parallel batches of 10.
+
+async function fetchQuranText(num){
+  const el=document.getElementById('ayah-text-ar');
+  if(!surahs[num]) return;
+  const mushaf=getMushaf();
+  if(surahs[num].textData&&surahs[num].textMushaf===mushaf){ updateAyahTextDisplay(); return; }
+  if(activeSurah==num){ el.innerHTML=`<span style="font-size:13px;color:var(--text3);">Loading ${MNAMES[mushaf]} text...</span>`; document.getElementById('btn-word-mode').disabled=true; }
+  setApiStatus('loading',`Fetching Surah ${num} · ${MNAMES[mushaf]}…`);
+
+  const mushafId = QP_MUSHAF_IDS[mushaf] || 1;
+  const base = 'https://api.quranpedia.net';
+  // Use local fallback count first; API will give us the real count via 404 on out-of-range ayahs
+  const estimatedCount = getAyahCount(num);
+
+  // Helper: fetch a single ayah, returns {numberInSurah, text} or null
+  async function fetchAyah(ayahNum){
+    try{
+      const res = await fetch(`${base}/v1/mushafs/${mushafId}/${num}/${ayahNum}`);
+      if(!res.ok) return null; // 404 means ayah doesn't exist in this mushaf
+      const data = await res.json();
+      // Extract text from response — API returns object with text/content field
+      const txt = data?.text || data?.content || data?.ayah_text || data?.verse ||
+                  data?.data?.text || data?.data?.content ||
+                  (Array.isArray(data) && data[0]?.text) || '';
+      if(!txt) return null;
+      return { numberInSurah: ayahNum, text: txt };
+    }catch(e){ return null; }
+  }
+
+  // Fetch in parallel batches of 10 to avoid overwhelming the API
+  const BATCH = 10;
+  const fetchedAyahs = [];
+  let ayahNum = 1;
+  let consecutiveNulls = 0;
+
+  // We fetch up to estimatedCount + a small buffer (handles riwayah differences)
+  const maxAyahs = estimatedCount + 5;
+
+  while(ayahNum <= maxAyahs && consecutiveNulls < 3){
+    const batchNums = [];
+    for(let i=0; i<BATCH && ayahNum+i<=maxAyahs; i++) batchNums.push(ayahNum+i);
+
+    // Update progress
+    if(activeSurah==num) setApiStatus('loading',`Fetching Surah ${num} · ayah ${ayahNum}/${estimatedCount}…`);
+
+    const results = await Promise.all(batchNums.map(fetchAyah));
+    let gotAny = false;
+    for(const r of results){
+      if(r){ fetchedAyahs.push(r); gotAny=true; consecutiveNulls=0; }
+      else{ consecutiveNulls++; }
+    }
+    if(!gotAny) break;
+    ayahNum += BATCH;
+  }
+
+  if(fetchedAyahs.length === 0){
+    setApiStatus('err','API unreachable');
+    if(activeSurah==num) el.innerHTML=`<span style="font-size:12px;color:var(--red);">⚠ Could not load Arabic text.<br><small>Check network or try "Re-fetch Text".</small></span>`;
+    toast(`Failed to fetch Surah ${num} (${MNAMES[mushaf]})`,'error');
+    return;
+  }
+
+  // Sort by ayah number (parallel fetch can arrive out of order)
+  fetchedAyahs.sort((a,b)=>a.numberInSurah-b.numberInSurah);
+
+  surahs[num].textData = fetchedAyahs;
+  surahs[num].textMushaf = mushaf;
+
+  // Reconcile timeline length with actual API count
+  if(surahs[num].ayahCount !== fetchedAyahs.length){
+    const oldCount = surahs[num].ayahCount;
+    surahs[num].ayahCount = fetchedAyahs.length;
+    let currentTimings = surahs[num].timings;
+    const basmalah = currentTimings.find(t=>t.ayahNum===0);
+    let std = currentTimings.filter(t=>t.ayahNum>0);
+    if(std.length > fetchedAyahs.length) std = std.slice(0,fetchedAyahs.length);
+    else while(std.length < fetchedAyahs.length) std.push({ayahNum:std.length+1,start:null,end:null,words:[]});
+    surahs[num].timings = basmalah ? [basmalah,...std] : std;
+    if(oldCount !== fetchedAyahs.length) toast(`Ayah count adjusted: ${oldCount}→${fetchedAyahs.length} (${MNAMES[mushaf]})`,'info');
+  }
+
+  setApiStatus('ok',`Loaded ${MNAMES[mushaf]} · ${fetchedAyahs.length} ayahs`);
+  saveToIDB();
+
+  if(activeSurah==num){
+    document.getElementById('emeta2').textContent=`Surah ${activeSurah} · ${surahs[activeSurah].ayahCount} ayahs · ${MNAMES[mushaf]}`;
+    document.getElementById('st-total').textContent=surahs[activeSurah].timings.length;
+    if(activeAyah>surahs[activeSurah].ayahCount) activeAyah=surahs[activeSurah].ayahCount;
+    renderTable(); updateAyahTextDisplay(); updateStats();
+  }
+  renderSurahList();
+}
+
+
+
+function setApiStatus(state, text){
+  const pill=document.getElementById('api-status-pill');
+  const txt=document.getElementById('api-status-text');
+  pill.className='api-status '+state;
+  txt.textContent=text;
+}
+
+// Force re-fetch for current surah (ignores cache)
+function refetchText(){
+  if(!activeSurah) return;
+  surahs[activeSurah].textData=null;
+  surahs[activeSurah].textMushaf=null;
+  fetchQuranText(activeSurah);
+}
+
+function updateAyahTextDisplay(){
+  const el=document.getElementById('ayah-text-ar');
+  const srcEl=document.getElementById('ayah-api-src');
+  const metaRow=document.getElementById('ayah-meta-row');
+  if(!activeSurah||!surahs[activeSurah].textData){ el.innerHTML='—'; document.getElementById('btn-word-mode').disabled=true; metaRow.style.display='none'; return; }
+  const s=surahs[activeSurah];
+  const mushaf=s.textMushaf||getMushaf();
+  metaRow.style.display='flex';
+  srcEl.textContent=`Quranpedia · ${MNAMES[mushaf]}`;
+
+  if(activeAyah===0){ el.innerHTML="بِسْمِ ٱللَّهِ ٱلرَّحْمَـٰنِ ٱلرَّحِيمِ <span class='tjw-ayah-num'>﴿0﴾</span>"; document.getElementById('btn-word-mode').disabled=false; return; }
+  const ayahObj=s.textData.find(a=>a.numberInSurah===activeAyah);
+  if(ayahObj){
+    let htmlTxt=ayahObj.text.replace(/\[([a-zA-Z0-9_:]+)\[(.*?)\]/g,(match,rule,text)=>`<span class="tjw-${rule.replace(/:/g,'-')}">${text}</span>`);
+    el.innerHTML=htmlTxt+` <span class="tjw-ayah-num">﴿${activeAyah}﴾</span>`;
+    const t=s.timings.find(x=>x.ayahNum===activeAyah);
+    document.getElementById('btn-word-mode').disabled=!(t&&t.start!==null&&t.end!==null);
+  } else {
+    el.innerHTML=`— <span style="font-size:11px;color:var(--text3)">(Verse not in this Mushaf variant)</span>`;
+    document.getElementById('btn-word-mode').disabled=true;
+  }
+}
+
+function getCleanAyahText(ayahObj){ if(!ayahObj) return ''; return ayahObj.text.replace(/<[^>]*>?/gm,'').replace(/\[([a-zA-Z0-9_:]+)\[(.*?)\]/g,'$2'); }
+
+// ===== MUSHAF CHANGE =====
+function onMushafChange(){
+  const type=getMushaf(); localStorage.setItem('qt_mushaf',type);
+  document.getElementById('modal-mushaf-badge').textContent=type;
+  if(Object.keys(surahs).length>0){
+    if(!confirm(`Switch to ${MNAMES[type]}? Ayah counts will update for all loaded Surahs.`)){ document.getElementById('mushaf-type').value=localStorage.getItem('qt_mushaf_prev')||'hafs'; return; }
+    for(let k in surahs){ surahs[k].textData=null; surahs[k].textMushaf=type; }
+    saveToIDB();
+    if(activeSurah) fetchQuranText(activeSurah);
+  }
+  localStorage.setItem('qt_mushaf_prev',type);
+}
+
+// ===== BASMALAH =====
+function toggleBasmalah(){
+  if(!activeSurah) return; const s=surahs[activeSurah];
+  const hasIt=s.timings.find(t=>t.ayahNum===0);
+  if(hasIt){ s.timings=s.timings.filter(t=>t.ayahNum!==0); s.hasBasmalah=false; setActiveAyah(1); }
+  else{ s.timings.unshift({ayahNum:0,start:null,end:null,words:[]}); s.hasBasmalah=true; setActiveAyah(0); }
+  triggerChange(); document.getElementById('btn-basmalah').textContent=s.hasBasmalah?'- Remove Basmalah':'+ Add Basmalah';
+}
+
+// ===== FILE HANDLING =====
+const dz=document.getElementById('dz');
+dz.addEventListener('dragover',e=>{e.preventDefault();dz.classList.add('over');});
+dz.addEventListener('dragleave',()=>dz.classList.remove('over'));
+dz.addEventListener('drop',e=>{e.preventDefault();dz.classList.remove('over');handleFiles(e.dataTransfer.files);});
+
+function handleFiles(files){
+  let added=0,first=null;
+  Array.from(files).forEach(f=>{
+    if(!f.type.startsWith('audio/')) return;
+    let num=null;
+    const matches=f.name.match(/\d+/g);
+    if(matches){
+      const valid=matches.map(n=>parseInt(n,10)).filter(n=>n>=1&&n<=114);
+      const padded3=matches.find(m=>m.length>=3&&parseInt(m,10)>=1&&parseInt(m,10)<=114);
+      if(padded3) num=parseInt(padded3,10);
+      else if(valid.length>0) num=valid[valid.length-1];
+    }
+    if(num){
+      const ac=getAyahCount(num);
+      if(!surahs[num]) surahs[num]={num,nameEn:getSI(num)[1],nameAr:getSI(num)[2],ayahCount:ac,hasBasmalah:false,timings:Array.from({length:ac},(_,i)=>({ayahNum:i+1,start:null,end:null,words:[]})),textData:null,textMushaf:getMushaf()};
+      surahs[num].audioBlob=f; added++; if(!first) first=num;
+      if(!surahs[num].textData) fetchQuranText(num);
+    }
+  });
+  if(added>0){ renderSurahList(); saveToIDB(); toast(`Loaded ${added} audio file(s)`,'success'); if(first) selectSurah(first); }
+}
+
+function loadAudioFile(f){ if(f&&activeSurah){ surahs[activeSurah].audioBlob=f; attachAudio(activeSurah); renderSurahList(); saveToIDB(); } }
+
+// ===== AUDIO ENGINE =====
+function attachAudio(num){
+  const s=surahs[num]; if(!s||!s.audioBlob) return;
+  aReady=false; cachedChannelData=null;
+  if(currentAudioUrl){ URL.revokeObjectURL(currentAudioUrl); }
+  currentAudioUrl=URL.createObjectURL(s.audioBlob);
+  audio.src=currentAudioUrl; audio.load();
+  document.getElementById('ahint').style.display='none'; document.getElementById('aui').style.display='block';
+  document.getElementById('sbf').textContent=s.nameEn;
+}
+
+audio.addEventListener('canplay',()=>{ aReady=true; });
+audio.addEventListener('loadedmetadata',()=>{ aReady=true; document.getElementById('ttm').textContent=fmtT(audio.duration); document.getElementById('st-dur').textContent=fmtT(audio.duration); drawWaveformFull(); });
+audio.addEventListener('play',()=>{ isPlaying=true; document.getElementById('pbtn').innerHTML='<svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg>'; loopRAF(); });
+audio.addEventListener('pause',()=>{ isPlaying=false; document.getElementById('pbtn').innerHTML='<svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor"><polygon points="5,3 19,12 5,21"/></svg>'; if(raf) cancelAnimationFrame(raf); });
+
+function togglePlay(){ if(!aReady) return; isPlaying?audio.pause():audio.play(); }
+
+function playAyah(n){
+  if(!aReady) return; const t=surahs[activeSurah].timings.find(x=>x.ayahNum===n);
+  setActiveAyah(n);
+  if(t&&t.start!==null){ audio.currentTime=t.start/1000; if(!isPlaying) togglePlay(); }
+  else toast('Ayah start time not set','error');
+}
+
+function toggleLoop(){ isLooping=!isLooping; document.getElementById('btn-loop').style.color=isLooping?'var(--accent)':'var(--text3)'; }
+
+function loopRAF(){
+  if(!isPlaying) return; updatePH();
+  const t=surahs[activeSurah]?.timings.find(x=>x.ayahNum===activeAyah);
+  if(t&&t.end!==null&&audio.currentTime>=(t.end/1000)){
+    if(isLooping&&t.start!==null&&!isWordTapping) audio.currentTime=t.start/1000;
+    else if(!isLooping&&!isWordTapping&&document.getElementById('chk-strict').checked){ const nxt=surahs[activeSurah].timings.find(x=>x.ayahNum===activeAyah+1); if(nxt) setActiveAyah(activeAyah+1); }
+  }
+  raf=requestAnimationFrame(loopRAF);
+}
+
+function updatePH(){
+  const pct=audio.duration?audio.currentTime/audio.duration*100:0;
+  document.getElementById('ph').style.left=pct+'%'; document.getElementById('ctm').textContent=fmtTFull(audio.currentTime);
+  if(isPlaying&&zoomLevel>1){ const wrap=document.getElementById('wvsw'); const px=(pct/100)*wrap.scrollWidth; if(px<wrap.scrollLeft||px>wrap.scrollLeft+wrap.clientWidth) wrap.scrollLeft=px-(wrap.clientWidth/2); }
+}
+
+// ===== WAVEFORM (VIRTUALIZED) =====
+const wvw=document.getElementById('wvw'),wrap=document.getElementById('wvsw'),canvas=document.getElementById('wv');
+
+function drawWaveformFull(){
+  if(!aReady||!audio.src) return;
+  if(cachedChannelData){ renderVirtualWave(); drawMinimap(); return; }
+  let ac;
+  try{ ac=new(window.AudioContext||window.webkitAudioContext)({sampleRate:8000}); }catch(e){ ac=new(window.AudioContext||window.webkitAudioContext)(); }
+  if(window.currentAborter) window.currentAborter.abort();
+  window.currentAborter=new AbortController();
+  fetch(audio.src,{signal:window.currentAborter.signal}).then(r=>r.arrayBuffer()).then(b=>ac.decodeAudioData(b)).then(dec=>{ cachedChannelData=dec.getChannelData(0); renderVirtualWave(); drawMinimap(); }).catch(err=>{ if(err.name==='AbortError') return; console.warn('Waveform decode failed:',err); });
+}
+
+function renderVirtualWave(){
+  if(!cachedChannelData) return;
+  const baseW=wrap.clientWidth||600,totalW=baseW*zoomLevel,H=78;
+  wvw.style.width=totalW+'px'; canvas.width=baseW; canvas.height=H; canvas.style.left=wrap.scrollLeft+'px';
+  const ctx=canvas.getContext('2d',{alpha:false});
+  const isLight=document.documentElement.getAttribute('data-theme')==='light';
+  ctx.fillStyle=isLight?'#ffffff':'#1a1e28'; ctx.fillRect(0,0,baseW,H);
+  const pctStart=wrap.scrollLeft/totalW,pctEnd=(wrap.scrollLeft+baseW)/totalW;
+  const startIdx=Math.floor(pctStart*cachedChannelData.length),endIdx=Math.min(cachedChannelData.length,Math.ceil(pctEnd*cachedChannelData.length));
+  const segLen=endIdx-startIdx,step=Math.max(1,Math.ceil(segLen/baseW));
+  ctx.fillStyle=isLight?'rgba(74,107,220,0.5)':'rgba(108,143,255,0.38)';
+  for(let i=0;i<baseW;i++){ let mx=0; for(let j=0;j<step;j++){ const v=Math.abs(cachedChannelData[startIdx+i*step+j]||0); if(v>mx)mx=v; } const h=mx*H*0.88; ctx.fillRect(i,(H/2)-(h/2),1,h); }
+}
+
+wrap.addEventListener('scroll',()=>{ if(zoomLevel>1){ renderVirtualWave(); updateMinimapWindow(); } });
+
+function setZoom(val){ zoomLevel=parseFloat(val); document.getElementById('zoom-lbl').textContent=zoomLevel.toFixed(1)+'x'; renderVirtualWave(); updatePH(); updateMinimapWindow(); }
+
+function drawMinimap(){
+  if(!cachedChannelData) return;
+  const c=document.getElementById('minimap'),W=document.getElementById('minimap-wrap').clientWidth,H=20;
+  c.width=W; c.height=H; const ctx=c.getContext('2d'); const step=Math.ceil(cachedChannelData.length/W);
+  const isLight=document.documentElement.getAttribute('data-theme')==='light';
+  ctx.fillStyle=isLight?'rgba(74,107,220,0.5)':'rgba(108,143,255,0.38)';
+  for(let i=0;i<W;i++){ let mx=0; for(let j=0;j<step;j++){ const v=Math.abs(cachedChannelData[i*step+j]||0); if(v>mx)mx=v; } const h=mx*H; ctx.fillRect(i,(H/2)-(h/2),1,h); }
+}
+
+function updateMinimapWindow(){
+  const win=document.getElementById('minimap-window');
+  if(zoomLevel<=1){ win.style.display='none'; return; }
+  win.style.display='block'; win.style.left=(wrap.scrollLeft/wrap.scrollWidth*100)+'%'; win.style.width=(wrap.clientWidth/wrap.scrollWidth*100)+'%';
+}
+document.getElementById('minimap-wrap').addEventListener('click',e=>{ if(!aReady||zoomLevel<=1) return; const r=e.currentTarget.getBoundingClientRect(); wrap.scrollLeft=((e.clientX-r.left)/r.width)*wrap.scrollWidth-(wrap.clientWidth/2); });
+
+// ===== REGION DRAG & WORD HANDLES =====
+let isDraggingRegion=false,rStartX=0,draggingWordIdx=-1;
+
+wvw.addEventListener('mousedown',e=>{
+  if(!aReady||!activeSurah) return;
+  if(e.target.classList.contains('word-handle')){ draggingWordIdx=parseInt(e.target.dataset.i); return; }
+  if(e.shiftKey){ isDraggingRegion=true; rStartX=e.clientX-wvw.getBoundingClientRect().left; const rovl=document.getElementById('region-ovl'); rovl.style.display='block'; rovl.style.left=(rStartX/wvw.clientWidth*100)+'%'; rovl.style.width='0%'; e.preventDefault(); }
+});
+wvw.addEventListener('mousemove',e=>{
+  const rect=wvw.getBoundingClientRect(),curX=e.clientX-rect.left;
+  if(isDraggingRegion){ const rovl=document.getElementById('region-ovl'); const x1=Math.min(rStartX,curX),w=Math.abs(curX-rStartX); rovl.style.left=(x1/rect.width*100)+'%'; rovl.style.width=(w/rect.width*100)+'%'; }
+  else if(draggingWordIdx>-1){ const t=surahs[activeSurah].timings.find(x=>x.ayahNum===activeAyah); if(t&&t.words&&t.words[draggingWordIdx]){ const ms=Math.round((curX/rect.width)*audio.duration*1000); t.words[draggingWordIdx].start=Math.max(t.start,Math.min(t.end,ms)); if(draggingWordIdx>0) t.words[draggingWordIdx-1].end=t.words[draggingWordIdx].start; updateOverlays(); } }
+});
+document.addEventListener('mouseup',e=>{
+  if(isDraggingRegion){ isDraggingRegion=false; document.getElementById('region-ovl').style.display='none'; const rect=wvw.getBoundingClientRect(),curX=e.clientX-rect.left; const sPct=Math.min(rStartX,curX)/rect.width,ePct=Math.max(rStartX,curX)/rect.width,dur=audio.duration*1000; updateTiming(activeAyah,'start',Math.round(sPct*dur)); updateTiming(activeAyah,'end',Math.round(ePct*dur)); }
+  if(draggingWordIdx>-1){ draggingWordIdx=-1; triggerChange(); }
+});
+wvw.addEventListener('click',e=>{ if(!e.shiftKey&&aReady&&e.target===wvw){ const r=wvw.getBoundingClientRect(); audio.currentTime=((e.clientX-r.left)/r.width)*audio.duration; updatePH(); } });
+
+document.getElementById('wvsw').addEventListener('wheel',e=>{ if(e.ctrlKey||e.metaKey){ e.preventDefault(); const mouseX=e.clientX-wrap.getBoundingClientRect().left,currentPos=wrap.scrollLeft+mouseX,pct=currentPos/wrap.scrollWidth; let nz=Math.max(1,Math.min(zoomLevel*(e.deltaY<0?1.3:0.77),50)); setZoom(nz); wrap.scrollLeft=(pct*wrap.scrollWidth)-mouseX; } },{passive:false});
+
+function updateOverlays(){
+  const container=document.getElementById('ovl-container'); container.innerHTML='';
+  if(!activeSurah||!audio.duration) return; const dur=audio.duration*1000;
+  surahs[activeSurah].timings.forEach(t=>{
+    if(t.start===null||t.end===null) return;
+    const box=document.createElement('div'); box.className='ovl-box'+(t.ayahNum===activeAyah?' active':'');
+    box.style.left=(t.start/dur*100)+'%'; box.style.width=((t.end-t.start)/dur*100)+'%';
+    if(t.ayahNum===activeAyah&&t.words&&t.words.length>0){ t.words.forEach((w,i)=>{ if(w.start!==null&&i>0){ const h=document.createElement('div'); h.className='word-handle'; h.dataset.i=i; h.style.left=((w.start-t.start)/(t.end-t.start)*100)+'%'; box.appendChild(h); } }); }
+    container.appendChild(box);
+  });
+}
+
+// ===== EDITOR LOGIC =====
+function selectSurah(num){
+  activeSurah=num; activeUndoStack=[]; activeRedoStack=[]; const s=surahs[num]; if(!s) return;
+  document.getElementById('est').style.display='none'; document.getElementById('econt').style.display='flex';
+  document.getElementById('ename').textContent=`${num}. ${s.nameEn}`; document.getElementById('ear').textContent=s.nameAr;
+  document.getElementById('emeta2').textContent=`Surah ${num} · ${s.ayahCount} ayahs · ${MNAMES[getMushaf()]}`;
+  document.getElementById('st-total').textContent=s.timings.length; document.getElementById('btn-basmalah').textContent=s.hasBasmalah?'- Remove Basmalah':'+ Add Basmalah';
+  document.getElementById('modal-mushaf-badge').textContent=getMushaf();
+  if(s.audioBlob) attachAudio(num); else { if(currentAudioUrl){ URL.revokeObjectURL(currentAudioUrl); currentAudioUrl=null; } audio.src=''; aReady=false; cachedChannelData=null; document.getElementById('ahint').style.display='flex'; document.getElementById('aui').style.display='none'; document.getElementById('ovl-container').innerHTML=''; document.getElementById('sbf').textContent='No audio loaded'; }
+  setZoom('1'); setActiveAyah(s.hasBasmalah?0:1); fetchQuranText(num); renderTable(); updateStats();
+}
+
+function setActiveAyah(n){
+  if(!activeSurah) return; const s=surahs[activeSurah];
+  if(!s.timings.find(x=>x.ayahNum===n)) n=s.hasBasmalah?0:1;
+  activeAyah=n; document.getElementById('aain').value=n;
+  document.querySelectorAll('#tbody tr').forEach(r=>r.classList.toggle('sel',parseInt(r.dataset.n)===n));
+  const sel=document.querySelector(`#tbody tr[data-n="${n}"]`); if(sel) sel.scrollIntoView({behavior:'smooth',block:'center'});
+  updateAyahTextDisplay(); updateOverlays();
+}
+
+function pushUndo(){ if(!activeSurah) return; activeUndoStack.push(JSON.parse(JSON.stringify(surahs[activeSurah].timings))); activeRedoStack=[]; }
+function executeUndo(){ if(!activeUndoStack.length) return; activeRedoStack.push(JSON.parse(JSON.stringify(surahs[activeSurah].timings))); surahs[activeSurah].timings=activeUndoStack.pop(); triggerChange(); }
+function executeRedo(){ if(!activeRedoStack.length) return; activeUndoStack.push(JSON.parse(JSON.stringify(surahs[activeSurah].timings))); surahs[activeSurah].timings=activeRedoStack.pop(); triggerChange(); }
+
+function syncAdjacentTimings(n,field,val){
+  if(!activeSurah||val===null||!document.getElementById('chk-strict').checked) return;
+  const tList=surahs[activeSurah].timings,idx=tList.findIndex(x=>x.ayahNum===n);
+  if(field==='start'&&idx>0) tList[idx-1].end=val;
+  else if(field==='end'&&idx<tList.length-1) tList[idx+1].start=val;
+}
+
+function updateTiming(n,f,v){
+  if(!activeSurah) return; const t=surahs[activeSurah].timings.find(x=>x.ayahNum===n); if(!t) return;
+  const newVal=v===''?null:parseInt(v); pushUndo(); t[f]=newVal; syncAdjacentTimings(n,f,newVal); triggerChange();
+  if(n===activeAyah) updateAyahTextDisplay();
+}
+
+function markStart(){ if(!aReady) return; pushUndo(); const t=surahs[activeSurah].timings.find(x=>x.ayahNum===activeAyah); t.start=Math.round(audio.currentTime*1000); syncAdjacentTimings(activeAyah,'start',t.start); triggerChange(); }
+function markEnd(){ if(!aReady) return; pushUndo(); const t=surahs[activeSurah].timings.find(x=>x.ayahNum===activeAyah); t.end=Math.round(audio.currentTime*1000); syncAdjacentTimings(activeAyah,'end',t.end); triggerChange(); const nxt=surahs[activeSurah].timings.find(x=>x.ayahNum===activeAyah+1); if(nxt) setActiveAyah(activeAyah+1); }
+
+function clearAll(){
+  if(!activeSurah) return;
+  if(confirm('Clear all timings for this Surah?')){ pushUndo(); surahs[activeSurah].timings.forEach(t=>{ t.start=null; t.end=null; if(t.words) t.words.forEach(w=>{w.start=null;w.end=null;}); }); triggerChange(); toast('Timings cleared','success'); }
+}
+
+function renderTable(){
+  if(!activeSurah) return; const s=surahs[activeSurah],strict=document.getElementById('chk-strict').checked;
+  document.getElementById('tbody').innerHTML=s.timings.map((t,i)=>{
+    const dur=(t.start!==null&&t.end!==null)?t.end-t.start:null;
+    let rowClass=t.ayahNum===activeAyah?'sel':'';
+    if(t.start!==null&&t.end!==null&&t.start>=t.end) rowClass+=' err-row';
+    if(i>0&&t.start!==null&&s.timings[i-1].end!==null&&t.start<s.timings[i-1].end) rowClass+=strict?' err-row':' overlap';
+    // Show Arabic snippet in table
+    let snippet='';
+    if(t.ayahNum===0) snippet='Basmalah';
+    else if(s.textData){ const ao=s.textData.find(a=>a.numberInSurah===t.ayahNum); if(ao){ const clean=getCleanAyahText(ao); snippet=clean.split(' ').slice(0,4).join(' ')+(clean.split(' ').length>4?'…':''); } }
+    return `<tr data-n="${t.ayahNum}" class="${rowClass}" onclick="setActiveAyah(${t.ayahNum})">
+      <td class="anc">${t.ayahNum===0?'Bsm':t.ayahNum}${t.start!==null&&t.end!==null?'<span class="ddot"></span>':''}${t.words?.length?'<span class="wbadge">W</span>':''}</td>
+      <td style="font-size:11px;direction:rtl;font-family:'Amiri',serif;color:var(--text2);">${snippet||`Ayah ${t.ayahNum}`}</td>
+      <td><input type="number" class="ii" value="${t.start!==null?t.start:''}" onchange="updateTiming(${t.ayahNum},'start',this.value)"></td>
+      <td><input type="number" class="ii" value="${t.end!==null?t.end:''}" onchange="updateTiming(${t.ayahNum},'end',this.value)"></td>
+      <td><span class="dc">${dur!==null?fmtD(dur):'—'}</span></td>
+      <td style="padding-right:8px;"><div class="ra">
+        <button class="ib p" title="Play" onclick="event.stopPropagation();playAyah(${t.ayahNum})"><svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor"><polygon points="5,3 19,12 5,21"/></svg></button>
+        <button class="ib d" title="Clear" onclick="event.stopPropagation();updateTiming(${t.ayahNum},'start','');updateTiming(${t.ayahNum},'end','');">✕</button>
+      </div></td>
+    </tr>`;
+  }).join('');
+}
+
+// ===== AUTO-SPLIT =====
+function magicAutoSplit(){
+  if(!activeSurah||!cachedChannelData||!audio.duration){ toast('Load audio first','error'); return; }
+  const thresh=parseFloat(document.getElementById('split-thresh').value),minDurMs=parseInt(document.getElementById('split-dur').value);
+  document.getElementById('split-modal').style.display='none'; toast('Analyzing silences…','info');
+  const s=surahs[activeSurah],reqSplits=s.timings.length-1;
+  const blockSize=Math.floor((cachedChannelData.length/audio.duration)*0.05);
+  let inSil=false,sStart=0,silences=[];
+  for(let i=0;i<cachedChannelData.length;i+=blockSize){
+    let sum=0; const end=Math.min(i+blockSize,cachedChannelData.length);
+    for(let j=i;j<end;j++) sum+=Math.abs(cachedChannelData[j]); const avg=sum/(end-i);
+    if(avg<thresh){ if(!inSil){ inSil=true; sStart=i; } }
+    else if(inSil){ inSil=false; const dMs=((i-sStart)/cachedChannelData.length)*audio.duration*1000; if(dMs>=minDurMs) silences.push({midMs:((sStart+i)/2/cachedChannelData.length)*audio.duration*1000}); }
+  }
+  silences.sort((a,b)=>b.midMs-a.midMs); let selected=silences.slice(0,reqSplits).sort((a,b)=>a.midMs-b.midMs);
+  pushUndo(); let cur=0;
+  for(let i=0;i<s.timings.length;i++){
+    s.timings[i].start=Math.round(cur);
+    if(i<reqSplits&&selected[i]){ s.timings[i].end=Math.round(selected[i].midMs); cur=selected[i].midMs; }
+    else s.timings[i].end=Math.floor(audio.duration*1000);
+  }
+  triggerChange(); toast('Auto-Split applied!','success');
+}
+
+function batchShift(){
+  if(!activeSurah) return; const val=prompt('Enter ms to shift (+200, -150):','0'); const ms=parseInt(val); if(!ms) return;
+  pushUndo(); surahs[activeSurah].timings.forEach(t=>{ if(t.start!==null)t.start=Math.max(0,t.start+ms); if(t.end!==null)t.end=Math.max(0,t.end+ms); if(t.words)t.words.forEach(w=>{if(w.start!==null)w.start=Math.max(0,w.start+ms);if(w.end!==null)w.end=Math.max(0,w.end+ms);}); }); triggerChange();
+}
+
+// ===== WORD TAPPING =====
+function openWordModal(){
+  const s=surahs[activeSurah],t=s.timings.find(x=>x.ayahNum===activeAyah);
+  if(!t||t.start===null||t.end===null){ toast('Set Ayah times first','error'); return; }
+  let txt=activeAyah===0?'بِسْمِ ٱللَّهِ ٱلرَّحْمَـٰنِ ٱلرَّحِيمِ':(getCleanAyahText(s.textData?.find(a=>a.numberInSurah===activeAyah)));
+  const rawWords=txt.trim().split(/\s+/);
+  if(!t.words||t.words.length!==rawWords.length) t.words=rawWords.map(w=>({text:w,start:null,end:null}));
+  isWordModeOpen=true; document.getElementById('word-modal').style.display='flex';
+  document.getElementById('wm-ayah-num').textContent=activeAyah===0?'Basmalah':activeAyah; renderWordSpans();
+}
+function renderWordSpans(){ const t=surahs[activeSurah].timings.find(x=>x.ayahNum===activeAyah); document.getElementById('wm-words').innerHTML=t.words.map((w,i)=>`<span class="word-span ${w.start!==null?'done':''} ${isWordTapping&&i===wmCurrentIndex?'active':''}">${w.text}</span>`).join(''); }
+function startWordTapping(){ const t=surahs[activeSurah].timings.find(x=>x.ayahNum===activeAyah); t.words.forEach(w=>{w.start=null;w.end=null;}); wmCurrentIndex=0; isWordTapping=true; renderWordSpans(); audio.currentTime=t.start/1000; audio.play(); }
+function recordWordTap(){
+  if(!isWordTapping) return; const t=surahs[activeSurah].timings.find(x=>x.ayahNum===activeAyah); const ms=Math.round(audio.currentTime*1000);
+  if(wmCurrentIndex===0) t.words[0].start=ms;
+  else if(wmCurrentIndex<t.words.length){ t.words[wmCurrentIndex-1].end=ms; t.words[wmCurrentIndex].start=ms; }
+  wmCurrentIndex++; renderWordSpans();
+  if(wmCurrentIndex>=t.words.length){ isWordTapping=false; audio.pause(); t.words[t.words.length-1].end=t.end; triggerChange(); toast('Word timings done!','success'); }
+}
+function closeWordModal(){ isWordModeOpen=false; isWordTapping=false; audio.pause(); document.getElementById('word-modal').style.display='none'; }
+function resetWordTimings(){ surahs[activeSurah].timings.find(x=>x.ayahNum===activeAyah).words=[]; renderWordSpans(); triggerChange(); }
+
+// ===== EXPORT / IMPORT =====
+function openExportModal(){ if(!Object.keys(surahs).length){ toast('No surahs to export','error'); return; } document.getElementById('exp-modal').style.display='flex'; updateExpOptions(); }
+function closeExportModal(){ document.getElementById('exp-modal').style.display='none'; }
+function updateExpOptions(){
+  const scope=document.getElementById('exp-scope').value,fmt=document.getElementById('exp-fmt').value;
+  document.getElementById('exp-fmt-group').style.display=(scope==='current')?'block':'none';
+  document.getElementById('exp-txt-group').style.display='block';
+}
+function importJSON(){ document.getElementById('jin').click(); }
+function handleJSONImport(inp){
+  const f=inp.files[0]; if(!f) return;
+  const r=new FileReader();
+  r.onload=e=>{ try{ const data=JSON.parse(e.target.result); let count=0; Object.keys(data).forEach(k=>{ const arr=data[k]; if(!Array.isArray(arr)||!arr.length) return; const num=parseInt(k),info=getSI(num); if(!surahs[num]) surahs[num]={num,nameEn:info?info[1]:`Surah ${num}`,nameAr:info?info[2]:'',ayahCount:arr.length,hasBasmalah:false,timings:[],audioBlob:null,textData:null,textMushaf:getMushaf()}; surahs[num].timings=arr.map(a=>({ayahNum:a.ayah,start:a.start||null,end:a.end||null,words:a.words||[]})); surahs[num].ayahCount=arr.length; count++; fetchQuranText(num); }); saveToIDB(); renderSurahList(); toast(`Imported ${count} surah(s)`,'success'); }catch{ toast('Invalid JSON','error'); } };
+  r.readAsText(f); inp.value='';
+}
+
+function formatT(ms,sep=','){ const h=Math.floor(ms/3600000),m=Math.floor((ms%3600000)/60000),s=Math.floor((ms%60000)/1000),mls=Math.floor(ms%1000); return String(h).padStart(2,'0')+':'+String(m).padStart(2,'0')+':'+String(s).padStart(2,'0')+sep+String(mls).padStart(3,'0'); }
+
+async function executeExport(){
+  try{
+    const scope=document.getElementById('exp-scope').value,fmt=document.getElementById('exp-fmt').value,incText=document.getElementById('exp-inc-text').checked;
+    const buildObj=(s,t)=>{ const o={ayah:t.ayahNum,start:t.start,end:t.end}; if(incText){ const txt=t.ayahNum===0?'بِسْمِ ٱللَّهِ ٱلرَّحْمَـٰنِ ٱلرَّحِيمِ':getCleanAyahText(s.textData?.find(x=>x.numberInSurah===t.ayahNum)); o.text=txt||`Ayah ${t.ayahNum}`; } return o; };
+    if(scope==='all'){ let out={}; Object.keys(surahs).sort((a,b)=>a-b).forEach(k=>{ out[k]=surahs[k].timings.filter(t=>t.start!==null).map(t=>buildObj(surahs[k],t)); }); downloadFile(JSON.stringify(out),'quran_db.json','application/json'); closeExportModal(); toast('DB exported','success'); return; }
+    if(scope==='zip'){ const zip=new JSZip(); const db={}; Object.keys(surahs).sort((a,b)=>a-b).forEach(k=>{ db[k]=surahs[k].timings.filter(t=>t.start!==null).map(t=>buildObj(surahs[k],t)); }); zip.file('database.json',JSON.stringify(db)); for(let k in surahs){ if(surahs[k].audioBlob) zip.file(`Surah_${k}.mp3`,surahs[k].audioBlob); } downloadFileFromBlob(await zip.generateAsync({type:'blob'}),'Quran_Project.zip'); closeExportModal(); toast('ZIP exported','success'); return; }
+    if(!activeSurah){ toast('Select a surah first','error'); return; }
+    const s=surahs[activeSurah],vts=s.timings.filter(t=>t.start!==null&&t.end!==null); if(!vts.length){ toast('No timings to export','error'); return; }
+    let out='';
+    if(fmt==='vtt'||fmt==='srt'){ out=fmt==='vtt'?'WEBVTT\n\n':''; vts.forEach((t,i)=>{ out+=`${i+1}\n${formatT(t.start,fmt==='vtt'?'.':',')} --> ${formatT(t.end,fmt==='vtt'?'.':',')}\n`; let txt=`Ayah ${t.ayahNum===0?'Basmalah':t.ayahNum}`; if(incText){ if(fmt==='vtt'&&t.words?.length&&t.words[0].start!==null) txt=t.words.map(w=>`<${formatT(w.start,'.')}>${w.text} `).join(''); else txt=(t.ayahNum===0)?'بِسْمِ ٱللَّهِ ٱلرَّحْمَـٰنِ ٱلرَّحِيمِ':getCleanAyahText(s.textData?.find(x=>x.numberInSurah===t.ayahNum))||txt; } out+=txt.trim()+'\n\n'; }); }
+    else if(fmt==='lrc'){ vts.forEach(t=>{ const m=Math.floor(t.start/60000),sec=(t.start%60000)/1000; const txt=incText?(t.ayahNum===0?'بِسْمِ ٱللَّهِ ٱلرَّحْمَـٰنِ ٱلرَّحِيمِ':getCleanAyahText(s.textData?.find(x=>x.numberInSurah===t.ayahNum))):`Ayah ${t.ayahNum}`; out+=`[${String(m).padStart(2,'0')}:${sec.toFixed(2).padStart(5,'0')}] ${txt}\n`; }); }
+    else if(fmt==='youtube'){ vts.forEach(t=>{ const m=Math.floor(t.start/60000),sec=Math.floor((t.start%60000)/1000); out+=`${String(m).padStart(2,'0')}:${String(sec).padStart(2,'0')} ${t.ayahNum===0?'Basmalah':`Ayah ${t.ayahNum}`}\n`; }); }
+    else if(fmt==='audacity'){ vts.forEach(t=>{ out+=`${(t.start/1000).toFixed(6)}\t${(t.end/1000).toFixed(6)}\tAyah ${t.ayahNum}\n`; }); }
+    else if(fmt==='json'){ out=JSON.stringify(vts.map(t=>buildObj(s,t))); }
+    downloadFile(out,`Surah_${s.num}.${fmt==='youtube'?'txt':fmt}`,'text/plain'); closeExportModal(); toast('Export successful','success');
+  }catch(e){ console.error(e); toast('Export failed','error'); }
+}
+
+function downloadFile(c,f,m){ downloadFileFromBlob(new Blob([c],{type:m}),f); }
+function downloadFileFromBlob(b,f){ const a=document.createElement('a'); a.href=URL.createObjectURL(b); a.download=f; document.body.appendChild(a); a.click(); document.body.removeChild(a); setTimeout(()=>URL.revokeObjectURL(a.href),100); }
+
+// ===== MODALS =====
+function fillFromQuick(val){
+  if(!val) return; const num=parseInt(val),s=getSI(num);
+  if(s){ document.getElementById('mnum').value=s[0]; document.getElementById('mname').value=s[1]; document.getElementById('mayahs').value=getAyahCount(s[0]); document.getElementById('modal-mushaf-badge').textContent=getMushaf(); }
+}
+
+function addSurah(){
+  const num=parseInt(document.getElementById('mnum').value),name=document.getElementById('mname').value||`Surah ${num}`,count=parseInt(document.getElementById('mayahs').value);
+  if(!num||num<1||num>114||!count||count<1){ toast('Invalid input','error'); return; }
+  if(!surahs[num]){
+    surahs[num]={num,nameEn:name,nameAr:getSI(num)?.[2]||'',ayahCount:count,hasBasmalah:false,timings:Array.from({length:count},(_,i)=>({ayahNum:i+1,start:null,end:null,words:[]})),textData:null,textMushaf:getMushaf()};
+    fetchQuranText(num); saveToIDB(); renderSurahList(); toast('Surah added','success'); selectSurah(num); closeModal();
+  } else toast('Surah already exists','error');
+}
+
+// ===== KEYBOARD =====
+document.addEventListener('keydown',e=>{
+  if(['INPUT','SELECT','TEXTAREA'].includes(e.target.tagName)) return;
+  if(isWordModeOpen){ if(e.code==='Space'){ e.preventDefault(); if(isWordTapping) recordWordTap(); else startWordTapping(); } return; }
+  if(e.ctrlKey||e.metaKey){ if(e.key==='z'){ e.preventDefault(); if(e.shiftKey) executeRedo(); else executeUndo(); } }
+  else if(e.code==='Space'){ e.preventDefault(); togglePlay(); }
+  else if(e.key==='['){ e.preventDefault(); audio.playbackRate=Math.max(0.25,audio.playbackRate-0.25); document.getElementById('speed-sel').value=audio.playbackRate; toast(`Speed: ${audio.playbackRate}x`,'info'); }
+  else if(e.key===']'){ e.preventDefault(); audio.playbackRate=Math.min(2.0,audio.playbackRate+0.25); document.getElementById('speed-sel').value=audio.playbackRate; toast(`Speed: ${audio.playbackRate}x`,'info'); }
+  else if(e.key==='s'||e.key==='S'){ e.preventDefault(); markStart(); }
+  else if(e.key==='e'||e.key==='E'){ e.preventDefault(); markEnd(); }
+  else if(e.altKey&&(e.key==='ArrowLeft'||e.key==='ArrowRight')){ e.preventDefault(); pushUndo(); const t=surahs[activeSurah]?.timings.find(x=>x.ayahNum===activeAyah); if(!t) return; const amt=e.key==='ArrowLeft'?-50:50; if(e.shiftKey) t.end=(t.end||0)+amt; else t.start=(t.start||0)+amt; triggerChange(); }
+  else if(e.key==='ArrowLeft'){ e.preventDefault(); if(aReady) audio.currentTime=Math.max(0,audio.currentTime-1); }
+  else if(e.key==='ArrowRight'){ e.preventDefault(); if(aReady) audio.currentTime=Math.min(audio.duration,audio.currentTime+1); }
+  else if(e.key==='ArrowUp'){ e.preventDefault(); setActiveAyah(activeAyah-1); }
+  else if(e.key==='ArrowDown'){ e.preventDefault(); setActiveAyah(activeAyah+1); }
+});
+
+// ===== HELPERS =====
+function openHelpModal(){ document.getElementById('help-modal').style.display='flex'; }
+function closeHelpModal(){ document.getElementById('help-modal').style.display='none'; }
+function openAddModal(){ document.getElementById('modal-mushaf-badge').textContent=getMushaf(); document.getElementById('amodal').style.display='flex'; }
+function closeModal(){ document.getElementById('amodal').style.display='none'; }
+function renderSurahList(){ document.getElementById('slist').innerHTML=Object.keys(surahs).sort((a,b)=>a-b).map(k=>{ const s=surahs[k],d=s.timings.filter(t=>t.start!==null&&t.end!==null).length,t=s.timings.length,p=Math.round(d/t*100); return `<div class="sitem${activeSurah==k?' active':''}${s.audioBlob?' has-audio':''}" onclick="selectSurah(${k})"><div class="snum">${k}</div><div class="sinfo"><div class="sname">${s.nameEn}</div><div class="smeta">${t} ayahs · ${p}% ${s.audioBlob?'🎵':''}</div></div><div class="sdot ${d===0?'dot-none':d===t?'dot-done':'dot-partial'}"></div></div>`; }).join(''); }
+function updateStats(){ if(!activeSurah) return; const d=surahs[activeSurah].timings.filter(t=>t.start!==null&&t.end!==null).length; document.getElementById('st-done').textContent=d; document.getElementById('sbp').textContent=`${d} / ${surahs[activeSurah].timings.length} done`; renderSurahList(); }
+function fmtT(s){ if(!s||isNaN(s)) return '0:00'; return `${Math.floor(s/60)}:${String(Math.floor(s%60)).padStart(2,'0')}`; }
+function fmtTFull(s){ if(!s||isNaN(s)) return '0:00.000'; return `${Math.floor(s/60)}:${String(Math.floor(s%60)).padStart(2,'0')}.${String(Math.floor((s%1)*1000)).padStart(3,'0')}`; }
+function fmtD(ms){ return ms<1000?`${ms}ms`:`${(ms/1000).toFixed(1)}s`; }
+function toast(m,t='info'){ const w=document.getElementById('twc'),e=document.createElement('div'); e.className=`toast ${t}`; e.innerHTML=`<span>${{success:'✓',error:'✕',info:'ℹ'}[t]||'•'}</span>${m}`; w.appendChild(e); setTimeout(()=>{e.style.opacity='0';setTimeout(()=>e.remove(),300);},2800); }
+
+// ===== INIT =====
+loadFromIDB();
+</script>
+</body>
+</html>
